@@ -1,0 +1,5 @@
+# The clue data is copyrighted by Jeopardy Productions and must never be published.
+data/
+*.json.gz
+*.tsv
+.DS_Store

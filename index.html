@@ -1,0 +1,965 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="J! Game">
+<meta name="theme-color" content="#060b52">
+<title>J! Archive Game</title>
+<link rel="icon" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
+<style>
+:root {
+  --bg: #060b52;
+  --panel: #0a1478;
+  --card: #0d1fc2;
+  --gold: #ffcc33;
+  --ink: #ffffff;
+  --muted: #b8c0ff;
+  --line: rgba(255, 255, 255, 0.18);
+  --good: #1f9d55;
+  --bad: #c0392b;
+  --neg: #ff8a80;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  min-height: 100vh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+#app { max-width: 1000px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 28px; margin: 4px 0 16px; letter-spacing: 0.5px; }
+h1 .bang { color: var(--gold); }
+h2 { font-size: 18px; margin: 0 0 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+a { color: var(--gold); }
+button, .filebtn {
+  font: inherit; font-weight: 600; cursor: pointer; border: 0; border-radius: 12px;
+  padding: 12px 18px; min-height: 48px; touch-action: manipulation;
+  background: rgba(255, 255, 255, 0.12); color: var(--ink);
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+}
+button:disabled { opacity: 0.35; cursor: default; }
+button.gold, .filebtn { background: var(--gold); color: #1a1300; }
+button.good { background: var(--good); }
+button.bad { background: var(--bad); }
+button.small { min-height: 40px; padding: 8px 14px; font-size: 15px; }
+button.link { background: none; color: var(--muted); text-decoration: underline; min-height: 40px; padding: 8px; }
+button.big { font-size: 22px; min-height: 64px; padding: 16px 28px; }
+input[type=text], input[type=number], select {
+  font: inherit; font-size: 18px; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: #fff; color: #000; min-height: 48px;
+}
+.panel { background: var(--panel); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+.grow { flex: 1; }
+.muted { color: var(--muted); }
+.center { text-align: center; }
+.chip {
+  display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px; padding: 4px 4px 4px 16px; font-size: 18px; font-weight: 600;
+}
+.chip button { min-height: 36px; padding: 4px 12px; border-radius: 999px; background: none; color: var(--muted); }
+.chip.add { padding: 4px 16px; background: none; border: 1px dashed var(--line); cursor: pointer; }
+.types { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px; }
+.types label {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 10px;
+  background: rgba(255, 255, 255, 0.06); cursor: pointer;
+}
+.types input { width: 22px; height: 22px; margin: 0; flex: none; }
+.types .n { color: var(--muted); font-size: 14px; display: block; }
+.topbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.topbar .title { flex: 1; font-weight: 700; font-size: 18px; color: var(--muted); }
+.scores { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+.score {
+  flex: 1 1 140px; background: var(--panel); border-radius: 12px; padding: 10px 14px;
+  border: 3px solid transparent; text-align: center;
+}
+.score.active { border-color: var(--gold); }
+.score .name { font-weight: 600; font-size: 17px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.score .pts { font-size: 26px; font-weight: 800; color: var(--gold); }
+.score .pts.neg { color: var(--neg); }
+.score .streak { font-size: 14px; color: var(--muted); min-height: 18px; }
+.turn { font-size: 22px; font-weight: 700; margin: 4px 0 10px; text-align: center; }
+.turn b { color: var(--gold); }
+.card {
+  background: var(--card); border-radius: 18px; padding: 20px 22px 26px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45); text-align: center;
+}
+.card .cat {
+  font-size: clamp(20px, 3vw, 28px); font-weight: 800; text-transform: uppercase;
+  letter-spacing: 0.5px; text-shadow: 2px 2px 0 #000;
+}
+.card .value {
+  font-size: clamp(30px, 5vw, 46px); font-weight: 900; color: var(--gold);
+  text-shadow: 3px 3px 0 #000; margin: 6px 0;
+}
+.card .comment { font-style: italic; color: var(--muted); margin: 4px 0; }
+.airdate {
+  display: inline-block; background: rgba(0, 0, 0, 0.3); border-radius: 10px;
+  padding: 8px 14px; margin: 8px 0 4px; font-size: clamp(17px, 2.4vw, 22px);
+}
+.airdate b { color: var(--gold); }
+.show { color: var(--muted); font-size: 15px; margin-top: 4px; }
+.clue-text {
+  font-family: Georgia, "Times New Roman", serif; text-transform: uppercase;
+  font-size: clamp(22px, 3.6vw, 38px); line-height: 1.35; text-shadow: 2px 2px 0 #000;
+  margin: 22px 0 6px; overflow-wrap: break-word;
+}
+.response {
+  margin-top: 18px; padding: 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.35);
+  font-size: clamp(20px, 3vw, 28px); font-weight: 700; color: var(--gold);
+}
+.response .lbl { display: block; font-size: 14px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+.dd-banner {
+  font-size: clamp(36px, 7vw, 64px); font-weight: 900; color: var(--gold);
+  text-shadow: 4px 4px 0 #000; font-style: italic; margin: 6px 0;
+}
+.actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 18px 0 8px; }
+.actions button.big { flex: 1 1 200px; max-width: 320px; }
+.wager { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+.wager input { width: 180px; font-size: 26px; text-align: center; }
+.masked { -webkit-text-security: disc; }
+table { width: 100%; border-collapse: collapse; font-size: 16px; }
+th, td { padding: 10px 8px; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--muted); font-weight: 600; font-size: 14px; }
+tr.click { cursor: pointer; }
+tr.sel td { background: rgba(255, 204, 51, 0.15); }
+.tablewrap { overflow-x: auto; }
+.fjrow { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.fjrow .who { flex: 1; font-weight: 700; font-size: 19px; min-width: 120px; text-align: left; }
+.ok { color: #7ef0a8; } .no { color: var(--neg); }
+.standings .row { font-size: 22px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.winner { font-size: clamp(28px, 5vw, 44px); font-weight: 900; color: var(--gold); text-align: center; margin: 10px 0; }
+#modal { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+#modal[hidden] { display: none; }
+#modal .box { background: var(--panel); border-radius: 16px; padding: 22px; max-width: 460px; width: 100%; box-shadow: 0 10px 40px #000; }
+#modal .box p { font-size: 18px; line-height: 1.4; margin-top: 0; }
+#toast {
+  position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  background: var(--gold); color: #1a1300; font-weight: 700; padding: 12px 20px; border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5); opacity: 0; transition: opacity 0.3s; pointer-events: none;
+  max-width: calc(100% - 32px); text-align: center; font-size: 18px; z-index: 20;
+}
+#toast.on { opacity: 1; }
+.err { background: #5c1010; border-radius: 10px; padding: 12px; margin: 12px 0; }
+@media (max-width: 600px) {
+  #app { padding: 12px; }
+  .card { padding: 16px 14px 20px; }
+  th, td { padding: 8px 5px; font-size: 14px; }
+}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div id="modal" hidden></div>
+<div id="toast"></div>
+<script>
+'use strict';
+
+// ---------- storage ----------
+const KEYS = { setup: 'jg.setup', match: 'jg.match', stats: 'jg.stats' };
+const LS = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { toast('Could not save. Is storage blocked?'); } },
+  del(k) { try { localStorage.removeItem(k); } catch (e) { /* ignore */ } },
+};
+
+function idbOpen() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('jarchive-game', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('files');
+    r.onsuccess = () => res(r.result);
+    r.onerror = () => rej(r.error);
+  });
+}
+async function idb(mode, fn) {
+  const db = await idbOpen();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('files', mode);
+    const req = fn(tx.objectStore('files'));
+    tx.oncomplete = () => res(req.result);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+const idbGet = key => idb('readonly', s => s.get(key));
+const idbPut = (key, val) => idb('readwrite', s => s.put(val, key));
+const idbDel = key => idb('readwrite', s => s.delete(key));
+
+// ---------- state ----------
+const S = {
+  screen: 'loading',
+  data: null,
+  fileInfo: null,
+  pools: null, poolsKey: '',
+  setup: LS.get(KEYS.setup, null),
+  match: LS.get(KEYS.match, null),
+  stats: LS.get(KEYS.stats, { version: 1, players: {} }),
+  undo: [],
+  statsSel: null,
+  msg: '',
+};
+
+const saveMatch = () => LS.set(KEYS.match, S.match);
+const saveStats = () => LS.set(KEYS.stats, S.stats);
+const saveSetup = () => LS.set(KEYS.setup, S.setup);
+
+// ---------- helpers ----------
+const $ = sel => document.querySelector(sel);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const money = n => (n < 0 ? '−$' : '$') + Math.abs(n).toLocaleString('en-US');
+const pct = (a, b) => b ? Math.round(100 * a / b) + '%' : '—';
+const ROUND_NAMES = { 1: 'Jeopardy! round', 2: 'Double Jeopardy! round', 3: 'Final Jeopardy!', 4: 'Triple Jeopardy! round' };
+const DD_ROUND_MAX = { 1: 1000, 2: 2000, 4: 3000 };
+
+function fmtDate(iso) {
+  const d = new Date(iso + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+let toastTimer;
+function toast(text) {
+  const t = $('#toast');
+  t.textContent = text;
+  t.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('on'), 2800);
+}
+
+// Shows a dialog; resolves with the value of the button pressed.
+function dialog(html, buttons) {
+  return new Promise(resolve => {
+    const m = $('#modal');
+    m.innerHTML = `<div class="box">${html}<div class="row" style="justify-content:flex-end;margin-top:16px">${
+      buttons.map((b, i) => `<button class="${b.cls || ''}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
+    m.hidden = false;
+    m.onclick = e => {
+      const btn = e.target.closest('button[data-i]');
+      if (!btn) return;
+      m.hidden = true;
+      m.onclick = null;
+      resolve(buttons[+btn.dataset.i].value);
+    };
+  });
+}
+const confirmDialog = (text, yes = 'Yes', cls = 'gold') =>
+  dialog(`<p>${text}</p>`, [{ label: 'Cancel', value: false }, { label: yes, value: true, cls }]);
+
+// ---------- clue data ----------
+async function parseClueFile(buf) {
+  const bytes = new Uint8Array(buf);
+  let text;
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    if (!('DecompressionStream' in window)) {
+      throw new Error('This browser cannot open .gz files directly. Unzip the file first (on an iPad, tap it in the Files app) and load the .json file instead.');
+    }
+    const stream = new Blob([buf]).stream().pipeThrough(new DecompressionStream('gzip'));
+    text = await new Response(stream).text();
+  } else {
+    text = new TextDecoder().decode(bytes);
+  }
+  let d;
+  try { d = JSON.parse(text); } catch (e) { throw new Error('That file is not a clue file (could not read it as JSON).'); }
+  if (d.format !== 'jarchive-game-clues') throw new Error('That file is not a clue file made by build_data.py.');
+  return indexData(d);
+}
+
+function indexData(d) {
+  const G = d.games.date.length, c = d.clues, N = c.q.length;
+  d.count = N;
+  d.gameYear = new Int16Array(G);
+  d.gameClues = new Int32Array(G);
+  d.minYear = 9999; d.maxYear = 0;
+  for (let g = 0; g < G; g++) {
+    const y = +d.games.date[g].slice(0, 4);
+    d.gameYear[g] = y;
+    if (y < d.minYear) d.minYear = y;
+    if (y > d.maxYear) d.maxYear = y;
+  }
+  for (let i = 0; i < N; i++) if (c.r[i] !== 3) d.gameClues[c.g[i]]++;
+  return d;
+}
+
+function clueAt(i) {
+  const d = S.data, c = d.clues, g = c.g[i];
+  return {
+    i, round: c.r[i], value: c.v[i], dd: !!c.dd[i],
+    category: d.categories[c.c[i]], comment: d.comments[c.cm[i]],
+    text: c.q[i], response: c.a[i],
+    date: d.games.date[g], type: d.games.type[g], note: d.notes[d.games.note[g]],
+  };
+}
+
+function getPools(f) {
+  const key = JSON.stringify(f);
+  if (S.pools && S.poolsKey === key) return S.pools;
+  const d = S.data, c = d.clues, G = d.games.date.length;
+  const types = new Set(f.types), ok = new Uint8Array(G);
+  for (let g = 0; g < G; g++) {
+    ok[g] = types.has(d.games.type[g]) && d.gameYear[g] >= f.from && d.gameYear[g] <= f.to ? 1 : 0;
+  }
+  const reg = [], fin = [];
+  for (let i = 0; i < d.count; i++) if (ok[c.g[i]]) (c.r[i] === 3 ? fin : reg).push(i);
+  S.pools = { reg, fin };
+  S.poolsKey = key;
+  return S.pools;
+}
+
+function typeCounts(from, to) {
+  const d = S.data, counts = d.showTypes.map(() => 0);
+  for (let g = 0; g < d.games.date.length; g++) {
+    if (d.gameYear[g] >= from && d.gameYear[g] <= to) counts[d.games.type[g]] += d.gameClues[g];
+  }
+  return counts;
+}
+
+// Picks a random clue from the pool that hasn't been used this match.
+function drawFrom(pool, used) {
+  if (!pool.length) return -1;
+  const seen = new Set(used);
+  for (let tries = 0; tries < 200; tries++) {
+    const i = pool[Math.floor(Math.random() * pool.length)];
+    if (!seen.has(i)) return i;
+  }
+  const left = pool.filter(i => !seen.has(i));
+  return left.length ? left[Math.floor(Math.random() * left.length)] : -1;
+}
+
+async function loadFile(file) {
+  S.screen = 'loading';
+  S.msg = `Reading ${file.name}…`;
+  render();
+  try {
+    const buf = await file.arrayBuffer();
+    S.msg = 'Unpacking clues…';
+    render();
+    const data = await parseClueFile(buf);
+    const info = { name: file.name, size: buf.byteLength, loadedAt: new Date().toISOString() };
+    await idbPut('clues', { buf, info });
+    if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+    S.data = data;
+    S.fileInfo = info;
+    S.pools = null;
+    S.msg = '';
+    if (S.match && S.match.dataCount !== data.count) S.match.used = [];
+    toast(`Loaded ${data.count.toLocaleString()} clues`);
+    goHome();
+  } catch (e) {
+    S.screen = 'load';
+    S.msg = e.message || String(e);
+    render();
+  }
+}
+
+// ---------- stats ----------
+const playerKey = name => name.trim().toLowerCase();
+function pstats(name) {
+  const k = playerKey(name);
+  if (!S.stats.players[k]) {
+    S.stats.players[k] = {
+      name, games: 0, wins: 0, att: 0, cor: 0, money: 0, cur: 0, best: 0,
+      ddAtt: 0, ddCor: 0, fjAtt: 0, fjCor: 0, bestScore: null, byType: {}, byDecade: {},
+    };
+  }
+  return S.stats.players[k];
+}
+
+function recordClue(name, clue, correct, amount, kind) {
+  const s = pstats(name);
+  s.att++;
+  if (correct) s.cor++;
+  s.money += correct ? amount : -amount;
+  s.cur = correct ? s.cur + 1 : 0;
+  const newBest = s.cur > s.best;
+  if (newBest) s.best = s.cur;
+  if (kind === 'dd') { s.ddAtt++; if (correct) s.ddCor++; }
+  if (kind === 'fj') { s.fjAtt++; if (correct) s.fjCor++; }
+  const bump = (obj, key) => { const a = obj[key] || (obj[key] = [0, 0]); a[0]++; if (correct) a[1]++; };
+  bump(s.byType, clue.type);
+  bump(s.byDecade, Math.floor(+clue.date.slice(0, 4) / 10) * 10);
+  return { streak: s.cur, newBest: newBest && s.cur >= 3 };
+}
+
+// ---------- match flow ----------
+function pushUndo() {
+  S.undo.push(JSON.stringify({ match: S.match, stats: S.stats }));
+  if (S.undo.length > 30) S.undo.shift();
+}
+
+function undo() {
+  const snap = S.undo.pop();
+  if (!snap) return;
+  const { match, stats } = JSON.parse(snap);
+  S.match = match;
+  S.stats = stats;
+  saveMatch();
+  saveStats();
+  toast('Undone');
+  render();
+}
+
+function startMatch() {
+  const f = { from: S.setup.from, to: S.setup.to, types: S.setup.types.slice() };
+  S.match = {
+    startedAt: new Date().toISOString(),
+    filters: f,
+    dataCount: S.data.count,
+    players: S.setup.players.map(name => ({ name, score: 0, streak: 0, att: 0, cor: 0 })),
+    turn: 0,
+    used: [],
+    clueNo: 0,
+    phase: 'clue',
+    current: null,
+    fj: null,
+  };
+  S.undo = [];
+  S.screen = 'game';
+  nextClue();
+}
+
+function nextClue() {
+  const m = S.match;
+  const i = drawFrom(getPools(m.filters).reg, m.used);
+  if (i < 0) {
+    toast('No more clues match your filters. On to Final Jeopardy!');
+    beginFinal();
+    return;
+  }
+  m.used.push(i);
+  m.clueNo++;
+  const clue = clueAt(i);
+  m.current = { clue, shown: false, revealed: false, wager: null };
+  m.phase = clue.dd ? 'dd' : 'clue';
+  saveMatch();
+  render();
+}
+
+function judge(correct) {
+  const m = S.match, cur = m.current, p = m.players[m.turn];
+  pushUndo();
+  const amount = cur.wager != null ? cur.wager : cur.clue.value;
+  p.score += correct ? amount : -amount;
+  p.att++;
+  if (correct) p.cor++;
+  p.streak = correct ? p.streak + 1 : 0;
+  const r = recordClue(p.name, cur.clue, correct, amount, cur.wager != null ? 'dd' : 'reg');
+  saveStats();
+  if (r.newBest) toast(`🔥 New personal best for ${p.name}: ${r.streak} in a row!`);
+  else if (correct && p.streak >= 3) toast(`🔥 ${p.name}: ${p.streak} in a row!`);
+  m.turn = (m.turn + 1) % m.players.length;
+  nextClue();
+}
+
+function skipClue() {
+  pushUndo();
+  nextClue();
+  toast('Clue skipped (no score change)');
+}
+
+function lockDDWager() {
+  const m = S.match, p = m.players[m.turn];
+  const max = Math.max(p.score, DD_ROUND_MAX[m.current.clue.round] || 2000);
+  const w = parseInt($('#wager').value, 10);
+  if (!(w >= 5 && w <= max)) { toast(`Wager must be between $5 and ${money(max)}`); return; }
+  pushUndo();
+  m.current.wager = w;
+  m.current.shown = true;
+  m.phase = 'clue';
+  saveMatch();
+  render();
+}
+
+async function confirmFinal() {
+  const ok = await confirmDialog('Go to <b>Final Jeopardy!</b>? This ends regular play for this match.', 'Final Jeopardy!');
+  if (!ok) return;
+  pushUndo();
+  beginFinal();
+}
+
+function beginFinal() {
+  const m = S.match;
+  let i = drawFrom(getPools(m.filters).fin, m.used);
+  if (i < 0) {
+    // No Final Jeopardy clues match the filters; fall back to any.
+    const all = [];
+    for (let k = 0; k < S.data.count; k++) if (S.data.clues.r[k] === 3) all.push(k);
+    i = drawFrom(all, m.used);
+  }
+  m.used.push(i);
+  m.fj = {
+    clue: clueAt(i),
+    eligible: m.players.map((p, k) => p.score > 0 ? k : -1).filter(k => k >= 0),
+    wagers: {}, step: 0, unlocked: false, results: {},
+  };
+  m.phase = 'fj-cat';
+  saveMatch();
+  render();
+}
+
+function lockFJWager() {
+  const m = S.match, fj = m.fj, k = fj.eligible[fj.step], p = m.players[k];
+  const w = parseInt($('#wager').value, 10);
+  if (!(w >= 0 && w <= p.score)) { toast(`Wager must be between $0 and ${money(p.score)}`); return; }
+  fj.wagers[k] = w;
+  fj.step++;
+  fj.unlocked = false;
+  if (fj.step >= fj.eligible.length) m.phase = 'fj-clue';
+  saveMatch();
+  render();
+}
+
+function finishMatch() {
+  const m = S.match, fj = m.fj;
+  pushUndo();
+  m.players.forEach((p, k) => {
+    const correct = fj.results[k];
+    const w = fj.wagers[k] || 0;
+    p.score += correct ? w : -w;
+    p.att++;
+    if (correct) p.cor++;
+    p.streak = correct ? p.streak + 1 : 0;
+    recordClue(p.name, fj.clue, correct, w, 'fj');
+  });
+  const top = Math.max(...m.players.map(p => p.score));
+  m.players.forEach(p => {
+    const s = pstats(p.name);
+    s.games++;
+    if (m.players.length > 1 && top > 0 && p.score === top) s.wins++;
+    if (s.bestScore == null || p.score > s.bestScore) s.bestScore = p.score;
+  });
+  m.phase = 'over';
+  saveStats();
+  saveMatch();
+  render();
+}
+
+function goHome() {
+  S.screen = S.data ? 'home' : 'load';
+  if (S.data && !S.setup) {
+    S.setup = { players: [], from: S.data.minYear, to: S.data.maxYear, types: S.data.showTypes.map(t => t.id) };
+  }
+  render();
+}
+
+async function managePlayers() {
+  const m = S.match;
+  const html = () => `<h2>Players in this match</h2>${m.players.map((p, k) =>
+    `<div class="row spread" style="padding:6px 0"><span style="font-size:18px">${esc(p.name)} <span class="muted">${money(p.score)}</span></span>
+     <button class="small" data-rm="${k}" ${m.players.length < 2 ? 'disabled' : ''}>Remove</button></div>`).join('')}
+    <div class="row" style="margin-top:12px"><input type="text" id="newp" class="grow" placeholder="Add a player"><button class="small gold" data-addp>Add</button></div>`;
+  const m2 = $('#modal');
+  m2.innerHTML = `<div class="box"><div id="pl">${html()}</div><div class="row" style="justify-content:flex-end;margin-top:16px"><button data-done>Done</button></div></div>`;
+  m2.hidden = false;
+  m2.onclick = async e => {
+    const t = e.target;
+    if (t.closest('[data-done]')) { m2.hidden = true; m2.onclick = null; render(); return; }
+    if (t.closest('[data-addp]')) {
+      const name = $('#newp').value.trim();
+      if (!name) return;
+      if (m.players.some(p => playerKey(p.name) === playerKey(name))) { toast('That player is already in the match'); return; }
+      pushUndo();
+      m.players.push({ name, score: 0, streak: 0, att: 0, cor: 0 });
+      if (!S.setup.players.includes(name)) { S.setup.players.push(name); saveSetup(); }
+    }
+    const rm = t.closest('[data-rm]');
+    if (rm) {
+      const k = +rm.dataset.rm;
+      pushUndo();
+      m.players.splice(k, 1);
+      if (k < m.turn) m.turn--;
+      m.turn %= m.players.length;
+    }
+    saveMatch();
+    $('#pl').innerHTML = html();
+  };
+}
+
+// ---------- rendering ----------
+function render() {
+  const app = $('#app');
+  const screens = { loading: viewLoading, load: viewLoad, home: viewHome, game: viewGame, stats: viewStats, settings: viewSettings };
+  app.innerHTML = screens[S.screen]();
+  window.scrollTo(0, 0);
+  const auto = app.querySelector('[autofocus]');
+  if (auto) auto.focus();
+}
+
+const viewLoading = () => `<h1>J<span class="bang">!</span> Archive Game</h1><div class="panel center"><p style="font-size:20px">${esc(S.msg || 'Loading…')}</p></div>`;
+
+function viewLoad() {
+  return `<h1>J<span class="bang">!</span> Archive Game</h1>
+  <div class="panel">
+    <h2>Load the clue file</h2>
+    <p>This game needs its clue file, <b>jeopardy-clues.json.gz</b> (about 26 MB). The clues aren't stored on the website,
+    so each device needs a copy, loaded once.</p>
+    <p class="muted">On an iPad or phone, first get the file into the Files app (for example by AirDrop, or from Google Drive), then tap the button below and pick it.</p>
+    ${S.msg ? `<div class="err">${esc(S.msg)}</div>` : ''}
+    <label class="filebtn big">Load clue file…<input type="file" id="clueFile" accept=".gz,.json,application/gzip,application/json" hidden></label>
+  </div>`;
+}
+
+function viewHome() {
+  const d = S.data, su = S.setup;
+  const counts = typeCounts(su.from, su.to);
+  const total = su.types.reduce((a, t) => a + counts[t], 0);
+  const years = [];
+  for (let y = d.minYear; y <= d.maxYear; y++) years.push(y);
+  const yearSel = (id, val) => `<select id="${id}" data-change="years">${years.map(y => `<option ${y === val ? 'selected' : ''}>${y}</option>`).join('')}</select>`;
+  const inSetup = new Set(su.players.map(playerKey));
+  const known = Object.values(S.stats.players).filter(p => !inSetup.has(playerKey(p.name)));
+  const m = S.match;
+  const resumable = m && m.phase !== 'over' && m.players.length;
+  return `<div class="row spread"><h1>J<span class="bang">!</span> Archive Game</h1>
+    <div class="row"><button class="small" data-act="stats">📊 Stats</button><button class="small" data-act="settings">⚙︎ Clue file</button></div></div>
+  ${resumable ? `<div class="panel row spread"><div><b>Match in progress</b><div class="muted">${m.players.map(p => `${esc(p.name)} ${money(p.score)}`).join(' · ')}</div></div>
+    <button class="gold" data-act="resume">Resume match</button></div>` : ''}
+  <div class="panel">
+    <h2>Players</h2>
+    <div class="row">${su.players.map((n, k) => `<span class="chip">${esc(n)}<button data-act="rmPlayer" data-arg="${k}" aria-label="Remove ${esc(n)}">✕</button></span>`).join('') || '<span class="muted">Add at least one player.</span>'}</div>
+    <div class="row" style="margin-top:12px"><input type="text" id="newPlayer" class="grow" placeholder="Player name" data-enter="addPlayer" maxlength="30"><button class="gold" data-act="addPlayer">Add player</button></div>
+    ${known.length ? `<div class="row" style="margin-top:12px"><span class="muted">Past players:</span>${known.map(p => `<span class="chip add" data-act="quickAdd" data-arg="${esc(p.name)}">+ ${esc(p.name)}</span>`).join('')}</div>` : ''}
+  </div>
+  <div class="panel">
+    <h2>Which clues?</h2>
+    <div class="row" style="margin-bottom:14px"><span>Aired from</span>${yearSel('fromYear', su.from)}<span>through</span>${yearSel('toYear', su.to)}</div>
+    <div class="row" style="margin-bottom:10px"><span class="muted grow">Show types</span>
+      <button class="small" data-act="types" data-arg="all">All</button><button class="small" data-act="types" data-arg="regular">Regular only</button><button class="small" data-act="types" data-arg="none">None</button></div>
+    <div class="types">${d.showTypes.map(t => `<label><input type="checkbox" data-change="type" value="${t.id}" ${su.types.includes(t.id) ? 'checked' : ''}>
+      <span>${esc(t.label)}<span class="n">${counts[t.id].toLocaleString()} clues</span></span></label>`).join('')}</div>
+    <p class="muted" style="margin-bottom:0"><b style="color:#fff">${total.toLocaleString()}</b> clues match.</p>
+  </div>
+  <div class="center"><button class="gold big" data-act="start" ${!su.players.length || !total ? 'disabled' : ''}>Start new match</button></div>`;
+}
+
+function scoreboard(m, active) {
+  return `<div class="scores">${m.players.map((p, k) => `<div class="score ${k === active ? 'active' : ''}">
+    <div class="name">${esc(p.name)}</div><div class="pts ${p.score < 0 ? 'neg' : ''}">${money(p.score)}</div>
+    <div class="streak">${p.streak >= 2 ? `🔥 ${p.streak} in a row` : p.att ? `${p.cor}/${p.att} correct` : ''}</div></div>`).join('')}</div>`;
+}
+
+function clueHeader(clue, valueText) {
+  return `<div class="cat">${esc(clue.category)}</div>
+    ${clue.comment ? `<div class="comment">${esc(clue.comment)}</div>` : ''}
+    ${valueText ? `<div class="value">${valueText}</div>` : ''}
+    <div class="airdate">Aired <b>${esc(fmtDate(clue.date))}</b></div>
+    <div class="show">${esc(clue.note || 'Regular game')} · ${ROUND_NAMES[clue.round]}</div>`;
+}
+
+function viewGame() {
+  const m = S.match;
+  const isFinal = m.phase.startsWith('fj') || m.phase === 'over';
+  const top = `<div class="topbar">
+    <button class="small" data-act="home">← Home</button>
+    <span class="title">${isFinal ? 'Final Jeopardy!' : `Clue ${m.clueNo}`}</span>
+    <button class="small" data-act="undo" ${S.undo.length ? '' : 'disabled'}>↶ Undo</button>
+    ${isFinal ? '' : `<button class="small" data-act="players">Players</button><button class="small gold" data-act="final">Final Jeopardy!</button>`}
+  </div>`;
+  const body = { dd: gameDD, clue: gameClue, 'fj-cat': fjCat, 'fj-wager': fjWager, 'fj-clue': fjClue, 'fj-judge': fjJudge, over: gameOver }[m.phase]();
+  const active = isFinal ? -1 : m.turn;
+  return top + scoreboard(m, active) + body;
+}
+
+function gameClue() {
+  const m = S.match, cur = m.current, c = cur.clue, p = m.players[m.turn];
+  const val = cur.wager != null ? `Daily Double · ${money(cur.wager)}` : money(c.value);
+  let actions;
+  if (!cur.shown) actions = `<button class="gold big" data-act="show">Show clue</button>`;
+  else if (!cur.revealed) actions = `<button class="gold big" data-act="reveal">Reveal response</button>`;
+  else actions = `<button class="good big" data-act="judge" data-arg="1">✓ Correct</button><button class="bad big" data-act="judge" data-arg="0">✗ Incorrect</button>`;
+  return `<div class="turn"><b>${esc(p.name)}</b>, this one's yours</div>
+  <section class="card">
+    ${clueHeader(c, val)}
+    ${cur.shown ? `<div class="clue-text">${esc(c.text)}</div>` : ''}
+    ${cur.revealed ? `<div class="response"><span class="lbl">Correct response</span>${esc(c.response)}</div>` : ''}
+  </section>
+  <div class="actions">${actions}</div>
+  ${cur.wager == null ? `<div class="center"><button class="link" data-act="skip">Skip this clue</button></div>` : ''}`;
+}
+
+function gameDD() {
+  const m = S.match, c = m.current.clue, p = m.players[m.turn];
+  const max = Math.max(p.score, DD_ROUND_MAX[c.round] || 2000);
+  return `<div class="turn"><b>${esc(p.name)}</b>, this one's yours</div>
+  <section class="card">
+    <div class="dd-banner">DAILY DOUBLE!</div>
+    ${clueHeader(c, '')}
+    <p style="font-size:18px">You have ${money(p.score)}. Wager from $5 up to ${money(max)}.</p>
+    <div class="wager"><input type="number" id="wager" inputmode="numeric" min="5" max="${max}" placeholder="$" data-enter="ddWager" autofocus>
+      <button class="gold" data-act="ddWager">Lock in wager</button>
+      <button data-act="trueDD" data-arg="${max}">True Daily Double (${money(max)})</button></div>
+  </section>`;
+}
+
+function fjCat() {
+  const m = S.match, fj = m.fj, out = m.players.filter((p, k) => !fj.eligible.includes(k));
+  return `<section class="card">
+    <div class="dd-banner" style="font-size:clamp(28px,5vw,44px)">FINAL JEOPARDY!</div>
+    ${clueHeader(fj.clue, '')}
+    ${out.length ? `<p class="muted">${out.map(p => esc(p.name)).join(', ')} ${out.length > 1 ? 'have' : 'has'} no money to wager, but can still play along for stats.</p>` : ''}
+  </section>
+  <div class="actions">${fj.eligible.length
+    ? `<button class="gold big" data-act="fjStartWagers">Enter wagers</button>`
+    : `<button class="gold big" data-act="fjShowClue">Show clue</button>`}</div>`;
+}
+
+function fjWager() {
+  const m = S.match, fj = m.fj, k = fj.eligible[fj.step], p = m.players[k];
+  if (!fj.unlocked) {
+    return `<section class="card">
+      <div class="cat">${esc(fj.clue.category)}</div>
+      <p style="font-size:24px;margin:24px 0">Pass the device to <b style="color:var(--gold)">${esc(p.name)}</b>.<br><span class="muted" style="font-size:17px">Wager ${fj.step + 1} of ${fj.eligible.length}. Everyone else, look away!</span></p>
+      <button class="gold big" data-act="fjUnlock">I'm ${esc(p.name)}: enter my wager</button>
+    </section>`;
+  }
+  return `<section class="card">
+    <div class="cat">${esc(fj.clue.category)}</div>
+    <div class="airdate">Aired <b>${esc(fmtDate(fj.clue.date))}</b></div>
+    <p style="font-size:20px">${esc(p.name)}, you have ${money(p.score)}. Wager $0 to ${money(p.score)}.</p>
+    <div class="wager"><input type="text" id="wager" class="masked" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="$" data-enter="fjWager" autofocus>
+      <button class="gold" data-act="fjWager">Lock in (hidden)</button></div>
+  </section>`;
+}
+
+function fjClue() {
+  const fj = S.match.fj;
+  return `<section class="card">
+    ${clueHeader(fj.clue, '')}
+    <div class="clue-text">${esc(fj.clue.text)}</div>
+  </section>
+  <p class="center muted">Everyone write down your response, then reveal.</p>
+  <div class="actions"><button class="gold big" data-act="fjReveal">Reveal response</button></div>`;
+}
+
+function fjJudge() {
+  const m = S.match, fj = m.fj;
+  const allJudged = m.players.every((p, k) => fj.results[k] != null);
+  return `<section class="card">
+    ${clueHeader(fj.clue, '')}
+    <div class="clue-text">${esc(fj.clue.text)}</div>
+    <div class="response"><span class="lbl">Correct response</span>${esc(fj.clue.response)}</div>
+  </section>
+  <div class="panel" style="margin-top:16px">
+    ${m.players.map((p, k) => {
+      const r = fj.results[k];
+      return `<div class="fjrow"><span class="who">${esc(p.name)} <span class="muted" style="font-weight:400">wagered ${money(fj.wagers[k] || 0)}</span></span>
+        <button class="small ${r === true ? 'good' : ''}" data-act="fjMark" data-arg="${k}:1">✓ Correct</button>
+        <button class="small ${r === false ? 'bad' : ''}" data-act="fjMark" data-arg="${k}:0">✗ Incorrect</button></div>`;
+    }).join('')}
+    <div class="center" style="margin-top:16px"><button class="gold big" data-act="finish" ${allJudged ? '' : 'disabled'}>Final results</button></div>
+  </div>`;
+}
+
+function gameOver() {
+  const m = S.match, fj = m.fj;
+  const ranked = m.players.map((p, k) => ({ p, k })).sort((a, b) => b.p.score - a.p.score);
+  const top = ranked[0].p.score;
+  const winners = ranked.filter(r => r.p.score === top && top > 0).map(r => r.p.name);
+  const headline = m.players.length === 1 ? `Final score: ${money(top)}`
+    : winners.length === 1 ? `🏆 ${esc(winners[0])} wins!`
+    : winners.length ? `🏆 Tie: ${winners.map(esc).join(' & ')}`
+    : 'No winner this time!';
+  return `<div class="winner">${headline}</div>
+  <div class="panel standings">${ranked.map(({ p, k }) => {
+    const w = fj.wagers[k] || 0, r = fj.results[k];
+    return `<div class="row spread"><span><b>${esc(p.name)}</b> <span class="muted" style="font-size:16px">${p.cor}/${p.att} correct · FJ ${r ? '<span class="ok">✓</span>' : '<span class="no">✗</span>'} ${w ? (r ? '+' : '−') + money(w).replace('−', '') : ''}</span></span>
+      <b class="${p.score < 0 ? 'no' : ''}" style="color:${p.score < 0 ? '' : 'var(--gold)'}">${money(p.score)}</b></div>`;
+  }).join('')}</div>
+  <div class="actions"><button class="gold big" data-act="again">Play again (same players)</button><button class="big" data-act="stats">📊 Stats</button><button class="big" data-act="home">Home</button></div>`;
+}
+
+function viewStats() {
+  const list = Object.entries(S.stats.players).sort((a, b) => b[1].cor - a[1].cor);
+  const sel = S.statsSel && S.stats.players[S.statsSel] ? S.statsSel : null;
+  const types = S.data ? S.data.showTypes : [];
+  let detail = '';
+  if (sel) {
+    const s = S.stats.players[sel];
+    const rows = (obj, label) => Object.entries(obj).sort((a, b) => a[0] - b[0])
+      .map(([k, [a, c]]) => `<tr><td>${esc(label(k))}</td><td>${c}/${a}</td><td>${pct(c, a)}</td></tr>`).join('');
+    detail = `<div class="panel"><div class="row spread"><h2 style="margin:0">${esc(s.name)}</h2>
+        <button class="small bad" data-act="delPlayer" data-arg="${esc(sel)}">Delete stats</button></div>
+      <p>Daily Doubles: <b>${s.ddCor}/${s.ddAtt}</b> (${pct(s.ddCor, s.ddAtt)}) · Final Jeopardy: <b>${s.fjCor}/${s.fjAtt}</b> (${pct(s.fjCor, s.fjAtt)}) · Best match score: <b>${s.bestScore == null ? '—' : money(s.bestScore)}</b></p>
+      <div class="row" style="align-items:flex-start;gap:24px">
+        <div class="grow tablewrap"><table><tr><th>By era</th><th>Correct</th><th>%</th></tr>${rows(s.byDecade, k => k + 's') || '<tr><td colspan="3" class="muted">No clues yet</td></tr>'}</table></div>
+        <div class="grow tablewrap"><table><tr><th>By show type</th><th>Correct</th><th>%</th></tr>${rows(s.byType, k => (types[k] || {}).label || 'Type ' + k) || '<tr><td colspan="3" class="muted">No clues yet</td></tr>'}</table></div>
+      </div></div>`;
+  }
+  return `<div class="topbar"><button class="small" data-act="back">← Back</button><span class="title">Player stats</span>
+    <button class="small" data-act="exportStats">Export</button>
+    <label class="filebtn small" style="min-height:40px;padding:8px 14px;font-size:15px;background:rgba(255,255,255,.12);color:#fff">Import<input type="file" id="statsFile" accept=".json,application/json" hidden></label></div>
+  <div class="panel tablewrap">${list.length ? `<table>
+    <tr><th>Player</th><th>Games</th><th>Wins</th><th>Clues</th><th>Correct</th><th>Net $</th><th>Streak</th><th>Best streak</th></tr>
+    ${list.map(([k, s]) => `<tr class="click ${k === sel ? 'sel' : ''}" data-act="selPlayer" data-arg="${esc(k)}">
+      <td><b>${esc(s.name)}</b></td><td>${s.games}</td><td>${s.wins}</td><td>${s.att}</td><td>${pct(s.cor, s.att)}</td>
+      <td class="${s.money < 0 ? 'no' : ''}">${money(s.money)}</td><td>${s.cur ? '🔥 ' + s.cur : 0}</td><td>${s.best}</td></tr>`).join('')}
+  </table><p class="muted" style="margin-bottom:0">Tap a player for a breakdown by era and show type. Stats are saved on this device only; use Export to back them up.</p>`
+    : '<p class="muted">No stats yet. Play a match!</p>'}</div>${detail}`;
+}
+
+function viewSettings() {
+  const d = S.data, f = S.fileInfo || {};
+  return `<div class="topbar"><button class="small" data-act="back">← Back</button><span class="title">Clue file</span></div>
+  <div class="panel">
+    <p><b>${d.count.toLocaleString()}</b> clues from <b>${d.games.date.length.toLocaleString()}</b> games, aired ${d.minYear}–${d.maxYear}.</p>
+    <p class="muted">File: ${esc(f.name || '?')} · loaded ${f.loadedAt ? new Date(f.loadedAt).toLocaleDateString() : '?'}</p>
+    <p class="muted">Source: ${esc(d.source)}</p>
+    <div class="row"><label class="filebtn">Replace clue file…<input type="file" id="clueFile" accept=".gz,.json,application/gzip,application/json" hidden></label>
+    <button class="bad" data-act="removeData">Remove clue file from this device</button></div>
+  </div>`;
+}
+
+// ---------- actions ----------
+function addPlayerName(name) {
+  name = name.trim();
+  if (!name) return;
+  if (S.setup.players.some(n => playerKey(n) === playerKey(name))) { toast(`${name} is already playing`); return; }
+  S.setup.players.push(name);
+  saveSetup();
+  render();
+}
+
+const ACT = {
+  addPlayer() { addPlayerName($('#newPlayer').value); const el = $('#newPlayer'); if (el) el.focus(); },
+  quickAdd(name) { addPlayerName(name); },
+  rmPlayer(k) { S.setup.players.splice(+k, 1); saveSetup(); render(); },
+  types(which) {
+    const ids = S.data.showTypes.map(t => t.id);
+    S.setup.types = which === 'all' ? ids : which === 'regular' ? [0] : [];
+    saveSetup();
+    render();
+  },
+  async start() {
+    if (S.match && S.match.phase !== 'over' && !(await confirmDialog('Abandon the match in progress and start a new one?', 'Start new match', 'bad'))) return;
+    startMatch();
+  },
+  resume() { S.screen = 'game'; render(); },
+  home: goHome,
+  back() { S.screen = S.prevScreen || 'home'; S.prevScreen = null; render(); },
+  stats() { S.prevScreen = S.screen; S.screen = 'stats'; render(); },
+  settings() { S.prevScreen = S.screen; S.screen = 'settings'; render(); },
+  undo,
+  players: managePlayers,
+  final: confirmFinal,
+  show() { S.match.current.shown = true; saveMatch(); render(); },
+  reveal() { S.match.current.revealed = true; saveMatch(); render(); },
+  judge(arg) { judge(arg === '1'); },
+  skip: skipClue,
+  ddWager: lockDDWager,
+  trueDD(max) { $('#wager').value = max; lockDDWager(); },
+  fjStartWagers() { S.match.phase = 'fj-wager'; saveMatch(); render(); },
+  fjUnlock() { S.match.fj.unlocked = true; saveMatch(); render(); },
+  fjWager: lockFJWager,
+  fjShowClue() { S.match.phase = 'fj-clue'; saveMatch(); render(); },
+  fjReveal() { S.match.phase = 'fj-judge'; saveMatch(); render(); },
+  fjMark(arg) { const [k, v] = arg.split(':'); S.match.fj.results[k] = v === '1'; saveMatch(); render(); },
+  finish: finishMatch,
+  again() {
+    S.setup.players = S.match.players.map(p => p.name);
+    S.setup.from = S.match.filters.from; S.setup.to = S.match.filters.to; S.setup.types = S.match.filters.types.slice();
+    saveSetup();
+    startMatch();
+  },
+  selPlayer(k) { S.statsSel = S.statsSel === k ? null : k; render(); },
+  async delPlayer(k) {
+    const s = S.stats.players[k];
+    if (!(await confirmDialog(`Delete all saved stats for <b>${esc(s.name)}</b>? This can't be undone.`, 'Delete', 'bad'))) return;
+    delete S.stats.players[k];
+    saveStats();
+    render();
+  },
+  exportStats() {
+    const blob = new Blob([JSON.stringify(S.stats, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `jgame-stats-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  },
+  async removeData() {
+    if (!(await confirmDialog('Remove the clue file from this device? Your stats are kept. You can load the file again later.', 'Remove', 'bad'))) return;
+    await idbDel('clues');
+    S.data = null; S.fileInfo = null; S.pools = null; S.msg = '';
+    S.screen = 'load';
+    render();
+  },
+};
+
+const CHANGE = {
+  years() {
+    let from = +$('#fromYear').value, to = +$('#toYear').value;
+    if (from > to) [from, to] = [to, from];
+    S.setup.from = from; S.setup.to = to;
+    saveSetup();
+    render();
+  },
+  type(el) {
+    const id = +el.value, set = new Set(S.setup.types);
+    el.checked ? set.add(id) : set.delete(id);
+    S.setup.types = [...set].sort((a, b) => a - b);
+    saveSetup();
+    render();
+  },
+};
+
+async function importStats(file) {
+  try {
+    const obj = JSON.parse(await file.text());
+    if (!obj || typeof obj.players !== 'object') throw new Error();
+    const n = Object.keys(obj.players).length;
+    if (!(await confirmDialog(`Replace this device's stats with the ${n} player(s) in <b>${esc(file.name)}</b>?`, 'Replace', 'bad'))) return;
+    S.stats = obj;
+    saveStats();
+    toast('Stats imported');
+    render();
+  } catch (e) {
+    toast('That file is not a stats export');
+  }
+}
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]');
+  if (!el || el.disabled) return;
+  const fn = ACT[el.dataset.act];
+  if (fn) fn(el.dataset.arg, el);
+});
+document.addEventListener('change', e => {
+  const el = e.target;
+  if (el.id === 'clueFile' && el.files[0]) loadFile(el.files[0]);
+  else if (el.id === 'statsFile' && el.files[0]) importStats(el.files[0]);
+  else if (el.dataset.change && CHANGE[el.dataset.change]) CHANGE[el.dataset.change](el);
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const el = e.target.closest('[data-enter]');
+  if (el && ACT[el.dataset.enter]) { e.preventDefault(); ACT[el.dataset.enter](); }
+});
+
+// ---------- boot ----------
+(async function boot() {
+  S.msg = 'Opening clue file…';
+  render();
+  try {
+    const saved = await idbGet('clues');
+    S.msg = '';
+    if (saved) {
+      S.data = await parseClueFile(saved.buf);
+      S.fileInfo = saved.info;
+      if (S.match && S.match.dataCount !== S.data.count) S.match.used = [];
+    }
+  } catch (e) {
+    S.msg = 'The saved clue file could not be read. Please load it again.';
+  }
+  if (!S.data) { S.screen = 'load'; render(); return; }
+  goHome();
+})();
+</script>
+</body>
+</html>
