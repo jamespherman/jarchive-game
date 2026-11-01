@@ -13,8 +13,14 @@ can be public while the copyrighted clue data stays private.
 3. Add players, pick a year range and show types, and tap **Start new match**.
 4. On each turn the player sees the category, value and air date, then taps **Show clue**,
    answers out loud, taps **Reveal response**, and the group judges it **Correct** or **Incorrect**.
-5. Daily Doubles come up when the clue was a real Daily Double on the show.
-6. Tap **Final Jeopardy!** when you're ready to finish the match.
+5. If the player doesn't know, anyone else can **Steal** after the clue is shown: tap their name
+   before revealing the response. The player who didn't know loses the clue's value, and
+   the stealer wins or loses it depending on their answer. Turns keep rotating as usual. Daily Doubles can't be stolen.
+6. Like a category? Tap **Run this category** to play the rest of that category's clues (from
+   the same game and round, lowest value first) before going back to random clues. Tap
+   **Stop running** to quit early.
+7. Daily Doubles come up when the clue was a real Daily Double on the show.
+8. Tap **Final Jeopardy!** when you're ready to finish the match.
 
 **Undo** reverses the last action if someone taps the wrong button.
 

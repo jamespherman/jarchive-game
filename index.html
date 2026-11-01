@@ -148,6 +148,9 @@ tr.sel td { background: rgba(255, 204, 51, 0.15); }
   max-width: calc(100% - 32px); text-align: center; font-size: 18px; z-index: 20;
 }
 #toast.on { opacity: 1; }
+.steal { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; margin: 4px 0 8px; }
+.runbar { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; color: var(--muted); }
+.runbar b { color: var(--ink); }
 .err { background: #5c1010; border-radius: 10px; padding: 12px; margin: 12px 0; }
 @media (max-width: 600px) {
   #app { padding: 12px; }
@@ -289,7 +292,7 @@ function indexData(d) {
 function clueAt(i) {
   const d = S.data, c = d.clues, g = c.g[i];
   return {
-    i, round: c.r[i], value: c.v[i], dd: !!c.dd[i],
+    i, g, round: c.r[i], value: c.v[i], dd: !!c.dd[i],
     category: d.categories[c.c[i]], comment: d.comments[c.cm[i]],
     text: c.q[i], response: c.a[i],
     date: d.games.date[g], type: d.games.type[g], note: d.notes[d.games.note[g]],
@@ -317,6 +320,16 @@ function typeCounts(from, to) {
     if (d.gameYear[g] >= from && d.gameYear[g] <= to) counts[d.games.type[g]] += d.gameClues[g];
   }
   return counts;
+}
+
+// Unused clues from the same game, round and category as clue i, lowest value first.
+function categoryRest(i) {
+  const c = S.data.clues, g = c.g[i], r = c.r[i], cat = c.c[i];
+  const used = new Set(S.match.used), out = [];
+  for (let k = 0; k < S.data.count; k++) {
+    if (c.g[k] === g && c.r[k] === r && c.c[k] === cat && !used.has(k)) out.push(k);
+  }
+  return out.sort((a, b) => c.v[a] - c.v[b] || a - b);
 }
 
 // Picks a random clue from the pool that hasn't been used this match.
@@ -364,7 +377,7 @@ function pstats(name) {
   if (!S.stats.players[k]) {
     S.stats.players[k] = {
       name, games: 0, wins: 0, att: 0, cor: 0, money: 0, cur: 0, best: 0,
-      ddAtt: 0, ddCor: 0, fjAtt: 0, fjCor: 0, bestScore: null, byType: {}, byDecade: {},
+      ddAtt: 0, ddCor: 0, stAtt: 0, stCor: 0, fjAtt: 0, fjCor: 0, bestScore: null, byType: {}, byDecade: {},
     };
   }
   return S.stats.players[k];
@@ -380,6 +393,7 @@ function recordClue(name, clue, correct, amount, kind) {
   if (newBest) s.best = s.cur;
   if (kind === 'dd') { s.ddAtt++; if (correct) s.ddCor++; }
   if (kind === 'fj') { s.fjAtt++; if (correct) s.fjCor++; }
+  if (kind === 'steal') { s.stAtt = (s.stAtt || 0) + 1; if (correct) s.stCor = (s.stCor || 0) + 1; }
   const bump = (obj, key) => { const a = obj[key] || (obj[key] = [0, 0]); a[0]++; if (correct) a[1]++; };
   bump(s.byType, clue.type);
   bump(s.byDecade, Math.floor(+clue.date.slice(0, 4) / 10) * 10);
@@ -416,6 +430,7 @@ function startMatch() {
     clueNo: 0,
     phase: 'clue',
     current: null,
+    run: null,
     fj: null,
   };
   S.undo = [];
@@ -425,7 +440,14 @@ function startMatch() {
 
 function nextClue() {
   const m = S.match;
-  const i = drawFrom(getPools(m.filters).reg, m.used);
+  let i = -1;
+  if (m.run) {
+    const used = new Set(m.used);
+    m.run.queue = m.run.queue.filter(k => !used.has(k));
+    if (m.run.queue.length) i = m.run.queue.shift();
+    else { m.run = null; toast('Category complete! Back to random clues.'); }
+  }
+  if (i < 0) i = drawFrom(getPools(m.filters).reg, m.used);
   if (i < 0) {
     toast('No more clues match your filters. On to Final Jeopardy!');
     beginFinal();
@@ -434,21 +456,29 @@ function nextClue() {
   m.used.push(i);
   m.clueNo++;
   const clue = clueAt(i);
-  m.current = { clue, shown: false, revealed: false, wager: null };
+  m.current = { clue, shown: false, revealed: false, wager: null, stealer: null };
   m.phase = clue.dd ? 'dd' : 'clue';
   saveMatch();
   render();
 }
 
-function judge(correct) {
-  const m = S.match, cur = m.current, p = m.players[m.turn];
-  pushUndo();
-  const amount = cur.wager != null ? cur.wager : cur.clue.value;
+// Applies one player's result to their match score and saved stats.
+function scorePlayer(p, clue, correct, amount, kind) {
   p.score += correct ? amount : -amount;
   p.att++;
   if (correct) p.cor++;
   p.streak = correct ? p.streak + 1 : 0;
-  const r = recordClue(p.name, cur.clue, correct, amount, cur.wager != null ? 'dd' : 'reg');
+  return recordClue(p.name, clue, correct, amount, kind);
+}
+
+function judge(correct) {
+  const m = S.match, cur = m.current, stolen = cur.stealer != null;
+  const p = m.players[stolen ? cur.stealer : m.turn];
+  pushUndo();
+  const amount = cur.wager != null ? cur.wager : cur.clue.value;
+  // On a steal, the player who didn't know loses the clue's value, as on the show.
+  if (stolen) scorePlayer(m.players[m.turn], cur.clue, false, amount, 'reg');
+  const r = scorePlayer(p, cur.clue, correct, amount, cur.wager != null ? 'dd' : stolen ? 'steal' : 'reg');
   saveStats();
   if (r.newBest) toast(`🔥 New personal best for ${p.name}: ${r.streak} in a row!`);
   else if (correct && p.streak >= 3) toast(`🔥 ${p.name}: ${p.streak} in a row!`);
@@ -458,8 +488,17 @@ function judge(correct) {
 
 function skipClue() {
   pushUndo();
-  nextClue();
   toast('Clue skipped (no score change)');
+  nextClue();
+}
+
+function runCategory() {
+  const m = S.match, queue = categoryRest(m.current.clue.i);
+  if (!queue.length) return;
+  m.run = { category: m.current.clue.category, queue };
+  saveMatch();
+  toast(`Running ${m.current.clue.category}: ${queue.length} more to come`);
+  render();
 }
 
 function lockDDWager() {
@@ -574,6 +613,8 @@ async function managePlayers() {
       m.players.splice(k, 1);
       if (k < m.turn) m.turn--;
       m.turn %= m.players.length;
+      const cur = m.current;
+      if (cur && cur.stealer != null) cur.stealer = cur.stealer === k ? null : cur.stealer - (cur.stealer > k ? 1 : 0);
     }
     saveMatch();
     $('#pl').innerHTML = html();
@@ -661,24 +702,47 @@ function viewGame() {
     ${isFinal ? '' : `<button class="small" data-act="players">Players</button><button class="small gold" data-act="final">Final Jeopardy!</button>`}
   </div>`;
   const body = { dd: gameDD, clue: gameClue, 'fj-cat': fjCat, 'fj-wager': fjWager, 'fj-clue': fjClue, 'fj-judge': fjJudge, over: gameOver }[m.phase]();
-  const active = isFinal ? -1 : m.turn;
+  const active = isFinal ? -1 : m.current.stealer != null ? m.current.stealer : m.turn;
   return top + scoreboard(m, active) + body;
+}
+
+// Run-the-category controls shown under a regular-round clue.
+function runControls() {
+  const m = S.match;
+  if (m.run) {
+    const n = m.run.queue.length;
+    return `<div class="runbar">Running <b>${esc(m.run.category)}</b> · ${n ? `${n} more after this` : 'last clue'}
+      <button class="link" data-act="stopRun">Stop running</button></div>`;
+  }
+  const n = categoryRest(m.current.clue.i).length;
+  return n ? `<div class="runbar"><button class="small" data-act="runCat">▶ Run this category (${n} more)</button></div>` : '';
 }
 
 function gameClue() {
   const m = S.match, cur = m.current, c = cur.clue, p = m.players[m.turn];
+  const thief = cur.stealer != null ? m.players[cur.stealer] : null;
   const val = cur.wager != null ? `Daily Double · ${money(cur.wager)}` : money(c.value);
-  let actions;
+  let actions, steal = '';
   if (!cur.shown) actions = `<button class="gold big" data-act="show">Show clue</button>`;
-  else if (!cur.revealed) actions = `<button class="gold big" data-act="reveal">Reveal response</button>`;
-  else actions = `<button class="good big" data-act="judge" data-arg="1">✓ Correct</button><button class="bad big" data-act="judge" data-arg="0">✗ Incorrect</button>`;
-  return `<div class="turn"><b>${esc(p.name)}</b>, this one's yours</div>
+  else if (!cur.revealed) {
+    actions = `<button class="gold big" data-act="reveal">Reveal response</button>`;
+    if (cur.wager == null && m.players.length > 1) {
+      steal = `<div class="steal"><span class="muted">${thief ? 'Stealing:' : `${esc(p.name)} doesn't know? Steal:`}</span>${
+        m.players.map((q, k) => k === m.turn ? '' : `<button class="small ${k === cur.stealer ? 'gold' : ''}" data-act="steal" data-arg="${k}">${esc(q.name)}</button>`).join('')}</div>`;
+    }
+  } else {
+    const who = thief ? ` ${esc(thief.name)}` : '';
+    actions = `<button class="good big" data-act="judge" data-arg="1">✓${who} Correct</button><button class="bad big" data-act="judge" data-arg="0">✗${who} Incorrect</button>`;
+  }
+  return `<div class="turn">${thief ? `<b>${esc(thief.name)}</b> is stealing from ${esc(p.name)}!` : `<b>${esc(p.name)}</b>, this one's yours`}</div>
   <section class="card">
     ${clueHeader(c, val)}
     ${cur.shown ? `<div class="clue-text">${esc(c.text)}</div>` : ''}
     ${cur.revealed ? `<div class="response"><span class="lbl">Correct response</span>${esc(c.response)}</div>` : ''}
   </section>
   <div class="actions">${actions}</div>
+  ${steal}
+  ${runControls()}
   ${cur.wager == null ? `<div class="center"><button class="link" data-act="skip">Skip this clue</button></div>` : ''}`;
 }
 
@@ -693,7 +757,8 @@ function gameDD() {
     <div class="wager"><input type="number" id="wager" inputmode="numeric" min="5" max="${max}" placeholder="$" data-enter="ddWager" autofocus>
       <button class="gold" data-act="ddWager">Lock in wager</button>
       <button data-act="trueDD" data-arg="${max}">True Daily Double (${money(max)})</button></div>
-  </section>`;
+  </section>
+  <div style="margin-top:16px">${runControls()}</div>`;
 }
 
 function fjCat() {
@@ -784,7 +849,7 @@ function viewStats() {
       .map(([k, [a, c]]) => `<tr><td>${esc(label(k))}</td><td>${c}/${a}</td><td>${pct(c, a)}</td></tr>`).join('');
     detail = `<div class="panel"><div class="row spread"><h2 style="margin:0">${esc(s.name)}</h2>
         <button class="small bad" data-act="delPlayer" data-arg="${esc(sel)}">Delete stats</button></div>
-      <p>Daily Doubles: <b>${s.ddCor}/${s.ddAtt}</b> (${pct(s.ddCor, s.ddAtt)}) · Final Jeopardy: <b>${s.fjCor}/${s.fjAtt}</b> (${pct(s.fjCor, s.fjAtt)}) · Best match score: <b>${s.bestScore == null ? '—' : money(s.bestScore)}</b></p>
+      <p>Daily Doubles: <b>${s.ddCor}/${s.ddAtt}</b> (${pct(s.ddCor, s.ddAtt)}) · Steals: <b>${s.stCor || 0}/${s.stAtt || 0}</b> (${pct(s.stCor || 0, s.stAtt || 0)}) · Final Jeopardy: <b>${s.fjCor}/${s.fjAtt}</b> (${pct(s.fjCor, s.fjAtt)}) · Best match score: <b>${s.bestScore == null ? '—' : money(s.bestScore)}</b></p>
       <div class="row" style="align-items:flex-start;gap:24px">
         <div class="grow tablewrap"><table><tr><th>By era</th><th>Correct</th><th>%</th></tr>${rows(s.byDecade, k => k + 's') || '<tr><td colspan="3" class="muted">No clues yet</td></tr>'}</table></div>
         <div class="grow tablewrap"><table><tr><th>By show type</th><th>Correct</th><th>%</th></tr>${rows(s.byType, k => (types[k] || {}).label || 'Type ' + k) || '<tr><td colspan="3" class="muted">No clues yet</td></tr>'}</table></div>
@@ -850,6 +915,9 @@ const ACT = {
   reveal() { S.match.current.revealed = true; saveMatch(); render(); },
   judge(arg) { judge(arg === '1'); },
   skip: skipClue,
+  steal(k) { const cur = S.match.current; cur.stealer = cur.stealer === +k ? null : +k; saveMatch(); render(); },
+  runCat: runCategory,
+  stopRun() { S.match.run = null; saveMatch(); toast('Back to random clues'); render(); },
   ddWager: lockDDWager,
   trueDD(max) { $('#wager').value = max; lockDDWager(); },
   fjStartWagers() { S.match.phase = 'fj-wager'; saveMatch(); render(); },
