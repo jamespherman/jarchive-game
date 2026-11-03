@@ -675,6 +675,11 @@ function viewHome() {
       <span>${esc(t.label)}<span class="n">${counts[t.id].toLocaleString()} clues</span></span></label>`).join('')}</div>
     <p class="muted" style="margin-bottom:0"><b style="color:#fff">${total.toLocaleString()}</b> clues match.</p>
   </div>
+  <div class="panel">
+    <h2>Options</h2>
+    <div class="types"><label><input type="checkbox" data-change="autoShow" ${su.autoShow ? 'checked' : ''}>
+      <span>Show clues right away<span class="n">Skip the Show clue button. Daily Doubles still ask for a wager first.</span></span></label></div>
+  </div>
   <div class="center"><button class="gold big" data-act="start" ${!su.players.length || !total ? 'disabled' : ''}>Start new match</button></div>`;
 }
 
@@ -699,7 +704,7 @@ function viewGame() {
     <button class="small" data-act="home">← Home</button>
     <span class="title">${isFinal ? 'Final Jeopardy!' : `Clue ${m.clueNo}`}</span>
     <button class="small" data-act="undo" ${S.undo.length ? '' : 'disabled'}>↶ Undo</button>
-    ${isFinal ? '' : `<button class="small" data-act="players">Players</button><button class="small gold" data-act="final">Final Jeopardy!</button>`}
+    ${isFinal ? '' : `<button class="small" data-act="toggleAutoShow" aria-pressed="${!!S.setup.autoShow}" title="Show clues right away">Auto-show: ${S.setup.autoShow ? 'On' : 'Off'}</button><button class="small" data-act="players">Players</button><button class="small gold" data-act="final">Final Jeopardy!</button>`}
   </div>`;
   const body = { dd: gameDD, clue: gameClue, 'fj-cat': fjCat, 'fj-wager': fjWager, 'fj-clue': fjClue, 'fj-judge': fjJudge, over: gameOver }[m.phase]();
   const active = isFinal ? -1 : m.current.stealer != null ? m.current.stealer : m.turn;
@@ -722,8 +727,9 @@ function gameClue() {
   const m = S.match, cur = m.current, c = cur.clue, p = m.players[m.turn];
   const thief = cur.stealer != null ? m.players[cur.stealer] : null;
   const val = cur.wager != null ? `Daily Double · ${money(cur.wager)}` : money(c.value);
+  const shown = cur.shown || S.setup.autoShow;
   let actions, steal = '';
-  if (!cur.shown) actions = `<button class="gold big" data-act="show">Show clue</button>`;
+  if (!shown) actions = `<button class="gold big" data-act="show">Show clue</button>`;
   else if (!cur.revealed) {
     actions = `<button class="gold big" data-act="reveal">Reveal response</button>`;
     if (cur.wager == null && m.players.length > 1) {
@@ -737,7 +743,7 @@ function gameClue() {
   return `<div class="turn">${thief ? `<b>${esc(thief.name)}</b> is stealing from ${esc(p.name)}!` : `<b>${esc(p.name)}</b>, this one's yours`}</div>
   <section class="card">
     ${clueHeader(c, val)}
-    ${cur.shown ? `<div class="clue-text">${esc(c.text)}</div>` : ''}
+    ${shown ? `<div class="clue-text">${esc(c.text)}</div>` : ''}
     ${cur.revealed ? `<div class="response"><span class="lbl">Correct response</span>${esc(c.response)}</div>` : ''}
   </section>
   <div class="actions">${actions}</div>
@@ -912,6 +918,11 @@ const ACT = {
   players: managePlayers,
   final: confirmFinal,
   show() { S.match.current.shown = true; saveMatch(); render(); },
+  toggleAutoShow() {
+    const m = S.match;
+    // Keep a clue that's already on screen visible when turning auto-show off.
+    if (S.setup.autoShow && m.phase === 'clue' && m.current) { m.current.shown = true; saveMatch(); }
+    S.setup.autoShow = !S.setup.autoShow; saveSetup(); toast(`Auto-show ${S.setup.autoShow ? 'on' : 'off'}`); render(); },
   reveal() { S.match.current.revealed = true; saveMatch(); render(); },
   judge(arg) { judge(arg === '1'); },
   skip: skipClue,
@@ -975,6 +986,7 @@ const CHANGE = {
     saveSetup();
     render();
   },
+  autoShow(el) { S.setup.autoShow = el.checked; saveSetup(); render(); },
 };
 
 async function importStats(file) {

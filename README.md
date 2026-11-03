@@ -13,6 +13,8 @@ can be public while the copyrighted clue data stays private.
 3. Add players, pick a year range and show types, and tap **Start new match**.
 4. On each turn the player sees the category, value and air date, then taps **Show clue**,
    answers out loud, taps **Reveal response**, and the group judges it **Correct** or **Incorrect**.
+   Turn on **Show clues right away** (under Options) to skip the **Show clue** tap. During a
+   match, the **Auto-show** button in the top bar switches it on or off.
 5. If the player doesn't know, anyone else can **Steal** after the clue is shown: tap their name
    before revealing the response. The player who didn't know loses the clue's value, and
    the stealer wins or loses it depending on their answer. Turns keep rotating as usual. Daily Doubles can't be stolen.
